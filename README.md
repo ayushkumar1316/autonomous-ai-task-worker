@@ -72,6 +72,7 @@ src/
 └── env_loader.py    .env loader (no external deps)
 
 invoice_task.py      v1 standalone agent — kept for comparison
+portal/              Local invoice portal (static HTML served via HTTP)
 ```
 
 ### The loop, in code
@@ -127,6 +128,36 @@ Provider: groq | Model: default | LLM: ON
 
 ---
 
+## CLI Usage
+
+### Single task
+```bash
+python src/main.py --no-llm                                    # deterministic, no key needed
+python src/main.py --provider groq                             # Groq LLM
+python src/main.py --provider openrouter                       # OpenRouter
+python src/main.py --no-llm --goal "Find the latest invoice from Company Y, extract the amount..."
+```
+
+### Real browser (Playwright)
+```bash
+pip install playwright
+python -m playwright install chromium
+python src/main.py --no-llm    # real DOM reads against the local portal
+```
+
+If Playwright is not installed or fails to start, the agent transparently falls back to the built-in `BrowserSimulator` — the core loop always runs.
+
+### Scheduler (multi-task)
+```bash
+python src/main.py --no-llm --schedule --schedule-name "daily_invoice" --schedule-freq once
+python src/main.py --no-llm --schedule --schedule-name "demo" --schedule-freq interval --schedule-interval 10 --schedule-max 3
+python src/main.py --no-llm --schedule --schedule-name "daily" --schedule-freq daily --schedule-max 30
+```
+
+Frequencies: `once`, `interval`, `daily`, `hourly`.
+
+---
+
 ## Evaluation against the criteria
 
 | Criterion | Where it shows up |
@@ -144,7 +175,7 @@ Provider: groq | Model: default | LLM: ON
 
 ## Design decisions
 
-**Why a simulated invoice portal instead of a live site.** The brief allows a sandboxed environment. A local portal keeps the run reproducible and avoids touching third-party systems. `executor.py` is the seam where Playwright replaces `BrowserSimulator` — nothing above it changes.
+**Why a local invoice portal instead of a live site.** The brief allows a sandboxed environment. A local portal keeps the run reproducible and avoids touching third-party systems. `browser_tools.py` serves `portal/invoices.html` over HTTP because `file://` breaks JavaScript in some Chromium builds; Playwright then drives real navigation, fills the search box, and reads DOM rows. Without Playwright, `executor.py` falls back to `BrowserSimulator` and nothing above it changes.
 
 **Why JSON prompts rather than a framework.** No LangChain, no agent SDK. The loop is 40 lines and readable end to end, which matters more for a technical discussion than framework ergonomics would. Structured JSON also means a malformed response is caught by `json.loads` and routed to the fallback, rather than silently producing a bad plan.
 
@@ -152,13 +183,16 @@ Provider: groq | Model: default | LLM: ON
 
 **Why retry only once.** Retrying indefinitely hides real failures and makes the demo non-deterministic. One retry on medium confidence, abort on low, is enough to show the adapt path without pretending to be a production retry policy.
 
+**Why a scheduler at all.** An agent that only runs on demand is a script. `scheduler.py` adds cron-style rules and multi-task orchestration so a run can recur and several goals can be queued — the smallest honest step toward "employed" rather than "invoked". It is deliberately single-process and in-memory; a production version would put the queue behind Redis.
+
 **Why `.env` instead of shell exports.** Reviewers cloning the repo should not have to learn PowerShell quoting to run it. `env_loader.py` is ~40 lines and has no dependencies.
 
 ---
 
 ## Known limitations
 
-1. **Tools are simulated.** `BrowserSimulator` returns a constructed response; no real browser, HTTP call, or DOM interaction happens. Playwright is the intended replacement.
+1. **Tools are simulated when Playwright is absent.** With Playwright installed the agent drives a real Chromium — navigation, a real search box, and DOM row reads against `portal/invoices.html`. Without it, `BrowserSimulator` returns a constructed response and the loop still completes, so reviewers without Playwright can still run the demo.
+2. **Playwright needs system libraries.** Minimal Linux images lack libXdamage, libgbm, libnss3 and friends. `playwright install chromium --with-deps` installs them when sudo is available; otherwise extract the .deb packages and point `LD_LIBRARY_PATH` at them.
 2. **One task type.** Invoice processing only. The loop generalises across companies, not across workflows.
 3. **Reasoning models need care.** `gpt-oss-*` returns a `reasoning` field alongside `content`; the client falls back to `reasoning` when `content` is empty. Models that spend their whole token budget on reasoning return empty content — `openai/gpt-oss-20b` at `max_tokens` 2048 is a practical default.
 4. **No persistent memory.** State lives for one process. Nothing is carried between runs.
@@ -170,7 +204,7 @@ Provider: groq | Model: default | LLM: ON
 
 ## Next steps
 
-1. Replace `BrowserSimulator` with Playwright against a locally served invoice portal — real navigation, real DOM reads.
+1. ~~Replace `BrowserSimulator` with Playwright~~ **Done** — real navigation, search input and DOM reads against `portal/invoices.html` served over HTTP.
 2. Add a second task type (expense report or onboarding) to prove workflow generalization, not just company generalization.
 3. Persist company memory across runs so the agent learns portal layouts.
 4. Replace confidence heuristics with an LLM judgement call at the adapt step.
