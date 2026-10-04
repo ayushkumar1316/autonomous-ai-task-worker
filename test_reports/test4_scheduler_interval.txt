@@ -1,0 +1,70 @@
+======================================================================
+ Autonomous AI Task Worker — LLM-Powered Agent
+======================================================================
+
+Provider: groq | Model: default | LLM: OFF
+
+User goal: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.
+
+[scheduler] Scheduler enabled: freq=interval, interval=2s, max=3
+[scheduler] Executing: interval_demo (run #1)
+[portal] Invoice portal served at http://127.0.0.1:35403
+[browser] Playwright Chromium ready — real DOM reads enabled
+[01] GOAL: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.
+[02] UNDERSTAND (no LLM - regex fallback)
+[03]   UNDERSTAND -> Goal -> extract ['amount', 'due date'] for Company X
+[04] PLAN (no LLM - fallback) 5 steps
+[05]   PLAN -> Planned 5 actions (fallback)
+[06] STEP 1/5: navigate_to_invoice_portal
+[07]   [OK] Loaded http://127.0.0.1:35403/invoices.html — title: Acme Corp — Invoice Portal
+[08] STEP 2/5: search_latest_invoice
+[09]   [OK] Browser found INV-2024-004 amount=$45000.00 vendor=Enterprise Corp
+[10] STEP 3/5: extract_invoice_data
+[11]   [OK] Extracted amount=$45000.0 due=2024-12-25 vendor=Enterprise Corp
+[12] STEP 4/5: enter_to_internal_system
+[13]   [OK] Entered to internal system as ENTRY-0001
+[14] STEP 5/5: verify_completion
+[15]   [OK] Verified ENTRY-0001 — status=verified
+[scheduler] Waiting 2s...
+[scheduler] Executing: interval_demo (run #2)
+[portal] Invoice portal served at http://127.0.0.1:44905
+[browser] Playwright unavailable (It looks like you are using Playwright Sync API inside the asyncio loop.
+Please use the Async API instead.) — falling back to simulator
+[01] GOAL: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.
+[02] UNDERSTAND (no LLM - regex fallback)
+[03]   UNDERSTAND -> Goal -> extract ['amount', 'due date'] for Company X
+[04] PLAN (no LLM - fallback) 5 steps
+[05]   PLAN -> Planned 5 actions (fallback)
+[06] STEP 1/5: navigate_to_invoice_portal
+[07]   [OK] Navigated to https://invoices.companyx.example.com/portal
+[08] STEP 2/5: search_latest_invoice
+[scheduler] Waiting 2s...
+[scheduler] Executing: interval_demo (run #2)
+[portal] Invoice portal served at http://127.0.0.1:39701
+[browser] Playwright unavailable (It looks like you are using Playwright Sync API inside the asyncio loop.
+Please use the Async API instead.) — falling back to simulator
+[01] GOAL: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.
+[02] UNDERSTAND (no LLM - regex fallback)
+[03]   UNDERSTAND -> Goal -> extract ['amount', 'due date'] for Company X
+[04] PLAN (no LLM - fallback) 5 steps
+[05]   PLAN -> Planned 5 actions (fallback)
+[06] STEP 1/5: navigate_to_invoice_portal
+[07]   [OK] Navigated to https://invoices.companyx.example.com/portal
+[08] STEP 2/5: search_latest_invoice
+
+--- Scheduler summary ---
+  run #1: status=completed, entry_id=-, runs=1
+  run #2: status=failed, entry_id=-, runs=1
+  run #3: status=failed, entry_id=-, runs=1
+  totals: {'total': 1, 'completed': 0, 'failed': 1, 'pending': 0}
+======================================================================
+ RESULT  status=failed
+======================================================================
+{
+  "task_id": "task_001",
+  "name": "interval_demo",
+  "executed_at": "2026-10-04T15:42:24.560622",
+  "run_count": 1,
+  "error": "'str' object has no attribute 'get'",
+  "status": "failed"
+}

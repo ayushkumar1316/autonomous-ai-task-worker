@@ -38,11 +38,13 @@ DEFAULT_GOAL = "Find the latest invoice from Company X, extract the amount and d
 def run_task(goal, provider="groq", api_key="", model="", use_llm=True):
     """Run the full agent loop for a goal."""
     # --- optional real browser: serves portal/invoices.html over HTTP ---
+    # Port 0 lets the OS pick a free port — recurring runs must not collide
+    # with a previous run whose server is still shutting down.
     portal_server = None
     browser = None
     if BROWSER_AVAILABLE:
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        portal_server = PortalServer(os.path.join(root, "portal"))
+        portal_server = PortalServer(os.path.join(root, "portal"), port=0)
         portal_url = portal_server.start()
         print(f"[portal] Invoice portal served at {portal_url}")
         try:
@@ -201,16 +203,28 @@ def main():
         rule = ScheduleRule(frequency=args.schedule_freq, interval_seconds=args.schedule_interval, start_date=datetime.now())
         task = scheduler.add_task(args.schedule_name, args.goal, rule)
         task.run_count = 0
-        result = scheduler._execute_task(task)
+        results = [scheduler._execute_task(task)]
         # For recurring, keep running
         if args.schedule_freq != "once" and args.schedule_max > 1:
             for _ in range(args.schedule_max - 1):
                 if args.schedule_interval:
                     print(f"[scheduler] Waiting {args.schedule_interval}s...")
                     time.sleep(args.schedule_interval)
-                result = scheduler._execute_task(task)
+                results.append(scheduler._execute_task(task))
+        result = results[-1]
+        # Summary of all runs
+        print("\n--- Scheduler summary ---")
+        for i, r in enumerate(results, 1):
+            inner = r.get("result") or {}
+            st = inner.get("status", r.get("status", "unknown"))
+            eid = inner.get("entry_id", "-")
+            print(f"  run #{i}: status={st}, entry_id={eid}, runs={r.get('run_count', '-')}")
+        summary = scheduler.get_task_summary()
+        print(f"  totals: {summary}")
         print("=" * 70)
-        print(f" RESULT  status={result['result']['status']}")
+        inner = result.get("result") or {"message": result.get("error", "unknown")}
+        status = inner.get("status", result.get("status", "unknown"))
+        print(f" RESULT  status={status}")
         print("=" * 70)
         print(json.dumps(result, indent=2))
         return

@@ -1,0 +1,75 @@
+[env] Loaded from .env: GROQ_API_KEY
+======================================================================
+ Autonomous AI Task Worker — LLM-Powered Agent
+======================================================================
+
+Provider: groq | Model: default | LLM: OFF
+
+User goal: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.
+
+[scheduler] Scheduler enabled: freq=once, interval=0s, max=1
+[scheduler] Executing: t (run #1)
+[portal] Invoice portal served at http://127.0.0.1:37153
+[browser] Playwright Chromium ready — real DOM reads enabled
+[01] GOAL: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.
+[02] UNDERSTAND (no LLM - regex fallback)
+[03]   UNDERSTAND -> Goal -> extract ['amount', 'due date'] for Company X
+[04] PLAN (no LLM - fallback) 5 steps
+[05]   PLAN -> Planned 5 actions (fallback)
+[06] STEP 1/5: navigate_to_invoice_portal
+[07]   [OK] Loaded http://127.0.0.1:37153/invoices.html — title: Acme Corp — Invoice Portal
+[08] STEP 2/5: search_latest_invoice
+[09]   [OK] Browser found INV-2024-004 amount=$45000.00 vendor=Enterprise Corp
+[10] STEP 3/5: extract_invoice_data
+[11]   [OK] Extracted amount=$45000.0 due=2024-12-25 vendor=Enterprise Corp
+[12] STEP 4/5: enter_to_internal_system
+[13]   [OK] Entered to internal system as ENTRY-0001
+[14] STEP 5/5: verify_completion
+[15]   [OK] Verified ENTRY-0001 — status=verified
+
+--- Scheduler summary ---
+  run #1: status=completed, entry_id=-, runs=1
+  totals: {'total': 1, 'completed': 1, 'failed': 0, 'pending': 0}
+======================================================================
+ RESULT  status=completed
+======================================================================
+{
+  "task_id": "task_001",
+  "name": "t",
+  "executed_at": "2026-10-04T15:58:32.825597",
+  "run_count": 1,
+  "result": {
+    "status": "completed",
+    "message": "Task completed and verified",
+    "log": [
+      "[01] GOAL: Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done.",
+      "[02] UNDERSTAND (no LLM - regex fallback)",
+      "[03]   UNDERSTAND -> Goal -> extract ['amount', 'due date'] for Company X",
+      "[04] PLAN (no LLM - fallback) 5 steps",
+      "[05]   PLAN -> Planned 5 actions (fallback)",
+      "[06] STEP 1/5: navigate_to_invoice_portal",
+      "[07]   [OK] Loaded http://127.0.0.1:37153/invoices.html \u2014 title: Acme Corp \u2014 Invoice Portal",
+      "[08] STEP 2/5: search_latest_invoice",
+      "[09]   [OK] Browser found INV-2024-004 amount=$45000.00 vendor=Enterprise Corp",
+      "[10] STEP 3/5: extract_invoice_data",
+      "[11]   [OK] Extracted amount=$45000.0 due=2024-12-25 vendor=Enterprise Corp",
+      "[12] STEP 4/5: enter_to_internal_system",
+      "[13]   [OK] Entered to internal system as ENTRY-0001",
+      "[14] STEP 5/5: verify_completion",
+      "[15]   [OK] Verified ENTRY-0001 \u2014 status=verified"
+    ],
+    "result": {
+      "company": "Company X",
+      "amount": 45000.0,
+      "due_date": "2024-12-25",
+      "vendor": "Enterprise Corp",
+      "invoice_id": "INV-2024-004",
+      "entry_id": "ENTRY-0001",
+      "verified": true,
+      "llm_used": false,
+      "llm_model": "",
+      "summary": "Invoice INV-2024-004 ($45000.0) due 2024-12-25 entered as ENTRY-0001"
+    }
+  },
+  "status": "completed"
+}

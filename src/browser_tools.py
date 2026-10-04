@@ -24,7 +24,8 @@ class PortalServer:
 
     @property
     def base_url(self) -> str:
-        return f"http://127.0.0.1:{self.port}"
+        actual = self._httpd.server_address[1] if self._httpd else self.port
+        return f"http://127.0.0.1:{actual}"
 
     class _QuietHandler(SimpleHTTPRequestHandler):
         """Suppresses the default per-request stderr logging."""

@@ -88,8 +88,12 @@ class ActionExecutor:
         if action == "search_latest_invoice":
             company = ctx.get("company", "Company X")
             r = self.browser.search(f"{company} latest invoice")
-            if r.data and isinstance(r.data.get("results"), list) and r.data["results"]:
-                rows = r.data["results"]
+            results = r.data.get("results") if isinstance(r.data, dict) else None
+            # Only treat as browser rows when every entry is a dict with a date key.
+            # BrowserSimulator returns plain strings, which must fall through to the portal.
+            if (isinstance(results, list) and results
+                    and all(isinstance(x, dict) and "date" in x for x in results)):
+                rows = results
                 latest = max(rows, key=lambda x: x.get("date") or "")
                 ctx["found_invoice"] = {
                     "id": latest.get("id"), "company": latest.get("company"),

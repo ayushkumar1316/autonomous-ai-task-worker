@@ -45,6 +45,53 @@ class ActionResult:
     verification_needed: bool = False
 
 
+def _extract_json(text: str):
+    """Pull the first JSON object out of an LLM response.
+
+    Reasoning models (gpt-oss, qwen) routinely emit prose around the JSON, or
+    spend their whole budget thinking and return none. Try, in order:
+    direct parse -> fenced block -> first {...} substring -> None.
+    """
+    if not text or not text.strip():
+        return None
+
+    candidates = []
+    stripped = text.strip()
+
+    # Fenced ```json ... ``` block
+    if "```" in stripped:
+        for part in stripped.split("```"):
+            part = part.strip()
+            if part.startswith("json"):
+                part = part[4:].strip()
+            if part.startswith("{"):
+                candidates.append(part)
+
+    # First balanced {...} substring
+    start = stripped.find("{")
+    if start != -1:
+        depth = 0
+        for i in range(start, len(stripped)):
+            if stripped[i] == "{":
+                depth += 1
+            elif stripped[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    candidates.append(stripped[start:i + 1])
+                    break
+
+    candidates.insert(0, stripped)
+
+    for cand in candidates:
+        try:
+            obj = json.loads(cand)
+            if isinstance(obj, dict):
+                return obj
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
 class AgentCore:
     def __init__(
         self,
@@ -87,7 +134,7 @@ Return ONLY a JSON object with these fields. No other text."""
             api_key=self.api_key,
             model=self.model,
             temperature=0.2,
-            max_tokens=500,
+            max_tokens=1024,
         )
 
         if not result["success"]:
@@ -99,16 +146,9 @@ Return ONLY a JSON object with these fields. No other text."""
             )
 
         try:
-            # Parse JSON from LLM response
-            content = result["content"].strip()
-            # Remove markdown code block if present
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
-            understanding = json.loads(content)
+            understanding = _extract_json(result["content"])
+            if understanding is None:
+                raise json.JSONDecodeError("no JSON object found", result["content"] or "", 0)
 
             company = understanding.get("company_name", "Company X")
             data_fields = understanding.get("data_fields", ["amount", "due_date"])
@@ -181,7 +221,7 @@ Plan the action sequence."""
             api_key=self.api_key,
             model=self.model,
             temperature=0.2,
-            max_tokens=800,
+            max_tokens=1024,
         )
 
         if not result["success"]:
@@ -206,15 +246,12 @@ Plan the action sequence."""
             )
 
         try:
-            content = result["content"].strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
-            plan = json.loads(content)
+            plan = _extract_json(result["content"])
+            if plan is None:
+                raise json.JSONDecodeError("no JSON object found", result["content"] or "", 0)
             actions = plan.get("actions", [])
+            if not isinstance(actions, list):
+                actions = []
             reasoning = plan.get("reasoning", "")
             expected = plan.get("expected_outcome", "")
 
