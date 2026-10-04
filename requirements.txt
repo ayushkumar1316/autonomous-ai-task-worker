@@ -4,5 +4,5 @@
 # playwright>=1.40      # real browser automation (replaces BrowserSimulator)
 # fastapi>=0.110        # HTTP API interface for the agent
 # uvicorn>=0.27
-# anthropic>=1.11       # LLM reasoning / planning component
-# httpx>=0.27           # async HTTP client for external integrations
+# (no LLM SDK needed — the agent calls Groq/OpenRouter directly over urllib, standard library only)
+
