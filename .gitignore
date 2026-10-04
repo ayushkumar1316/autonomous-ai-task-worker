@@ -5,3 +5,8 @@ venv/
 demo_frames/
 .DS_Store
 .env
+
+# Environment variables
+.env
+.env.local
+.env.*.local
