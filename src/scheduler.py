@@ -80,7 +80,12 @@ class TaskScheduler:
     """Orchestrates multiple scheduled tasks, supports cron-style rules."""
 
     def __init__(self, worker_fn: Callable):
-        """worker_fn: callable(goal, ...) -> Dict with 'status', 'result', etc."""
+        """worker_fn: callable(goal, ...) -> Dict with 'status', 'result', etc.
+
+        The worker_fn may accept an optional ``executor`` kwarg to reuse a
+        shared ActionExecutor (one Playwright browser) across runs instead of
+        relaunching Chromium every time.
+        """
         self.worker_fn = worker_fn
         self.tasks: Dict[str, ScheduledTask] = {}
         self._task_counter = 0
@@ -132,14 +137,21 @@ class TaskScheduler:
             results.append(result)
         return results
 
-    def _execute_task(self, task: ScheduledTask) -> Dict:
-        """Execute a single task and record the result."""
+    def _execute_task(self, task: ScheduledTask, executor=None) -> Dict:
+        """Execute a single task and record the result.
+
+        ``executor`` is forwarded to the worker when it accepts it, so a
+        Playwright browser can be reused across runs.
+        """
         print(f"[scheduler] Executing: {task.name} (run #{task.run_count + 1})")
         task.status = TaskStatus.RUNNING
         task.last_run = datetime.now()
 
         try:
-            result = self.worker_fn(task.goal)
+            if executor is not None:
+                result = self.worker_fn(task.goal, executor=executor)
+            else:
+                result = self.worker_fn(task.goal)
             task.run_count += 1
             task.status = TaskStatus.COMPLETED if result.get("status") == "completed" else TaskStatus.FAILED
 

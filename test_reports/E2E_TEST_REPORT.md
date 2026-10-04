@@ -3,6 +3,7 @@
 **Date:** 4 Oct 2026, 4:00 PM IST  
 **Environment:** Ubuntu 22.04, Python 3.10, Groq `openai/gpt-oss-20b`, Chromium (Playwright headless), portal served at `127.0.0.1` (dynamic port `0`)  
 **Run mode:** 5 deterministic tests via `--no-llm` + 4 LLM tests via Groq, total 9
+**Browser lifecycle:** one shared Chromium instance + one shared portal server per process, reused across scheduler runs (no relaunch, no port churn).
 
 ---
 
@@ -31,7 +32,7 @@
 | 08 | llm_novel_goal | LLM + Browser | `Get the most recent invoice for Company Z...` (novel phrasing) | ✅ completed |
 | 09 | llm_scheduler | LLM + Scheduler | Scheduled LLM task | ✅ completed |
 
-**Pass rate: 9/9 (100%)**
+**Pass rate: 9/9 (100%) — re-run after the shared-browser refactor, all runs green**
 
 ---
 
@@ -45,6 +46,7 @@
 | `log.append` never printed (`WHY:` lines missing) | No output after `STEP n/5` | Replaced with `add_log` |
 | `browser/portal_server` scoped to `run_task` but cleaned in `main` | `NameError: name 'browser' is not defined` | Moved cleanup into `run_task` |
 | Scheduler port collision on recurring runs | `Address already in use`, runs 2,3 failed | `port=0` dynamic allocation + `base_url` reading `server_address` |
+| Playwright Sync API + asyncio loop conflict on recurring runs | Run #2/#3 fell back to `BrowserSimulator` | One shared `PlaywrightBrowser` + `PortalServer` created in `main()` and reused across runs via `executor` kwarg — no relaunch, no event-loop reuse |
 | `BrowserSimulator` returned strings; code expected dict rows | `'str' object has no attribute 'get'` | Strict type guard: `all(isinstance(x, dict) and "date" in x)` |
 | Scheduler multi-run `result["result"]` missing on failure | `KeyError: 'result'` in main loop | Safe `result.get("result") or {"message": ...}` printing |
 | Reasoning model emitted prose around JSON → parse failed | `Expecting value: line 1 column 1` | Added `_extract_json` (brace-balancer + fenced-block handling) |

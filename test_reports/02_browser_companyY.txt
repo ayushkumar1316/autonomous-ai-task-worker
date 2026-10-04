@@ -7,15 +7,15 @@ Provider: groq | Model: default | LLM: OFF
 
 User goal: Find the latest invoice from Company Y, extract the amount and due date, enter it into our internal system, and tell me once it is done.
 
-[portal] Invoice portal served at http://127.0.0.1:35305
-[browser] Playwright Chromium ready — real DOM reads enabled
+[portal] Invoice portal served at http://127.0.0.1:38305
+[browser] Playwright Chromium ready — real DOM reads enabled (shared)
 [01] GOAL: Find the latest invoice from Company Y, extract the amount and due date, enter it into our internal system, and tell me once it is done.
 [02] UNDERSTAND (no LLM - regex fallback)
 [03]   UNDERSTAND -> Goal -> extract ['amount', 'due date'] for Company Y
 [04] PLAN (no LLM - fallback) 5 steps
 [05]   PLAN -> Planned 5 actions (fallback)
 [06] STEP 1/5: navigate_to_invoice_portal
-[07]   [OK] Loaded http://127.0.0.1:35305/invoices.html — title: Acme Corp — Invoice Portal
+[07]   [OK] Loaded http://127.0.0.1:38305/invoices.html — title: Acme Corp — Invoice Portal
 [08] STEP 2/5: search_latest_invoice
 [09]   [OK] Browser found INV-Y-001 amount=$12000.00 vendor=Alpha Corp
 [10] STEP 3/5: extract_invoice_data

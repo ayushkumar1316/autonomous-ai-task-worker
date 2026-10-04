@@ -35,25 +35,18 @@ from src.env_loader import load_env
 DEFAULT_GOAL = "Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done."
 
 
-def run_task(goal, provider="groq", api_key="", model="", use_llm=True):
-    """Run the full agent loop for a goal."""
+def run_task(goal, provider="groq", api_key="", model="", use_llm=True, executor=None):
+    """Run the full agent loop for a goal.
+
+    Pass a shared ActionExecutor (with one Playwright browser) to avoid
+    relaunching Chromium on every scheduler run.
+    """
     # --- optional real browser: serves portal/invoices.html over HTTP ---
     # Port 0 lets the OS pick a free port — recurring runs must not collide
     # with a previous run whose server is still shutting down.
-    portal_server = None
-    browser = None
-    if BROWSER_AVAILABLE:
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        portal_server = PortalServer(os.path.join(root, "portal"), port=0)
-        portal_url = portal_server.start()
-        print(f"[portal] Invoice portal served at {portal_url}")
-        try:
-            browser = PlaywrightBrowser(portal_url)
-            print("[browser] Playwright Chromium ready — real DOM reads enabled")
-        except Exception as e:
-            print(f"[browser] Playwright unavailable ({e}) — falling back to simulator")
-            browser = None
-    executor = ActionExecutor(browser=browser)
+    # Browser/portal is created by main() and shared across scheduler runs.
+    if executor is None:
+        executor = ActionExecutor(browser=None)
 
     agent = AgentCore(provider=provider, api_key=api_key, model=model) if use_llm else None
 
@@ -191,6 +184,21 @@ def main():
     print(f"\nProvider: {args.provider} | Model: {args.model or 'default'} | LLM: {'ON' if not args.no_llm else 'OFF'}")
     print(f"\nUser goal: {args.goal}\n")
 
+    # Create ONE browser + portal and reuse them for every run.
+    shared_executor = ActionExecutor(browser=None)
+    if BROWSER_AVAILABLE:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        portal_server = PortalServer(os.path.join(root, "portal"), port=0)
+        portal_url = portal_server.start()
+        print(f"[portal] Invoice portal served at {portal_url}")
+        try:
+            browser = PlaywrightBrowser(portal_url)
+            print("[browser] Playwright Chromium ready — real DOM reads enabled (shared)")
+            shared_executor = ActionExecutor(browser=browser)
+        except Exception as e:
+            print(f"[browser] Playwright unavailable ({e}) — falling back to simulator")
+            browser = None
+
     # Scheduler mode
     if args.schedule:
         if not SCHEDULER_AVAILABLE:
@@ -198,7 +206,8 @@ def main():
             sys.exit(1)
         print(f"[scheduler] Scheduler enabled: freq={args.schedule_freq}, interval={args.schedule_interval}s, max={args.schedule_max}")
         scheduler = TaskScheduler(
-            lambda g: run_task(g, provider=args.provider, api_key=api_key, model=args.model, use_llm=not args.no_llm)
+            lambda g, _e=shared_executor: run_task(g, provider=args.provider, api_key=api_key,
+                                             model=args.model, use_llm=not args.no_llm, executor=_e)
         )
         rule = ScheduleRule(frequency=args.schedule_freq, interval_seconds=args.schedule_interval, start_date=datetime.now())
         task = scheduler.add_task(args.schedule_name, args.goal, rule)
@@ -227,16 +236,29 @@ def main():
         print(f" RESULT  status={status}")
         print("=" * 70)
         print(json.dumps(result, indent=2))
+        if BROWSER_AVAILABLE:
+            try:
+                browser.close()
+            except Exception:
+                pass
+            portal_server.stop()
         return
 
     # Single task
-    result = run_task(args.goal, provider=args.provider, api_key=api_key, model=args.model, use_llm=not args.no_llm)
+    result = run_task(args.goal, provider=args.provider, api_key=api_key, model=args.model,
+                      use_llm=not args.no_llm, executor=shared_executor)
 
     print("\n" + "=" * 70)
     print(f" RESULT  status={result['status']}")
     print("=" * 70)
     print(json.dumps(result.get("result") or {"message": result["message"]}, indent=2))
 
+    if BROWSER_AVAILABLE and browser is not None:
+        try:
+            browser.close()
+        except Exception:
+            pass
+        portal_server.stop()
     return result
 
 

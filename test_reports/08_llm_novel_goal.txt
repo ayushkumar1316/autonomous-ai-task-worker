@@ -7,31 +7,31 @@ Provider: groq | Model: default | LLM: ON
 
 User goal: Get the most recent invoice for Company Z and record the amount and due date in our system
 
-[portal] Invoice portal served at http://127.0.0.1:39757
-[browser] Playwright Chromium ready — real DOM reads enabled
+[portal] Invoice portal served at http://127.0.0.1:39193
+[browser] Playwright Chromium ready — real DOM reads enabled (shared)
 [01] GOAL: Get the most recent invoice for Company Z and record the amount and due date in our system
 [01] UNDERSTAND goal: 'Get the most recent invoice for Company Z and record the amount and due date in our system'
 [02]   LLM understood: company=Company Z, fields=['amount', 'due_date'], type=invoice_extraction
 [02]   UNDERSTAND -> Goal understood: extract ['amount', 'due_date'] for Company Z (invoice_extraction)
 [03] PLAN: Using LLM to plan action sequence
 [04]   LLM planned 5 actions
-[05]   Reasoning: The user requests invoice extraction for Company Z, requiring amount and due_date. The mandatory pipeline mandates navigating to the portal, locating the latest invoice, extracting the specified fields, entering them into the internal system, and verifying completion. This sequence ensures all required steps are performed in the correct order.
-[06]   Expected: The invoice data (amount and due_date) for Company Z’s latest invoice is successfully entered into the internal system and verified as complete.
+[05]   Reasoning: The user wants to extract the amount and due_date from the latest invoice of Company Z. The invoice processing pipeline requires navigating to the portal, searching for the latest invoice, extracting the required data, entering it into the internal system, and then verifying completion. All five steps must be executed in order.
+[06]   Expected: The amount and due_date from Company Z’s latest invoice are successfully extracted, entered into the internal system, and verified as complete.
 [03]   PLAN -> Planned 5 actions via openai/gpt-oss-20b
 [04] STEP 1/5: navigate_to_invoice_portal
-[05]   WHY: I’m navigating to the invoice portal to locate Company Z’s latest invoice, which is the first step required to extract the amount and due date before entering the data into the int
-[06]   [OK] Loaded http://127.0.0.1:39757/invoices.html — title: Acme Corp — Invoice Portal
+[05]   WHY: I am navigating to the invoice portal to locate and access the latest invoice for Company Z, which is the first step required to extract the amount and due date.
+[06]   [OK] Loaded http://127.0.0.1:39193/invoices.html — title: Acme Corp — Invoice Portal
 [07] STEP 2/5: search_latest_invoice
-[08]   WHY: I am searching the latest invoice for Company Z to locate the most recent billing record, which is the first step required to extract the requested amount and due_date fields.
+[08]   WHY: I’m searching for Company Z’s most recent invoice so I can extract the required amount and due date, which are needed to update our internal system.
 [09]   [OK] Browser found INV-Z-001 amount=$50000.00 vendor=Omega Industries
 [10] STEP 3/5: extract_invoice_data
-[11]   WHY: I am extracting the invoice data to capture the amount and due date for Company Z’s latest invoice. This is required to record the extracted data in our system.
+[11]   WHY: I am extracting the amount and due_date from Company Z’s latest invoice so that these values can be entered into the internal system as requested.
 [12]   [OK] Extracted amount=$50000.0 due=2024-12-30 vendor=Omega Industries
 [13] STEP 4/5: enter_to_internal_system
-[14]   WHY: I’m entering the extracted invoice data into the internal system to record the amount and due date for Company Z’s latest invoice, completing the required data entry step.
+[14]   WHY: I’m entering the extracted amount and due date into the internal system to record Company Z’s latest invoice details.
 [15]   [OK] Entered to internal system as ENTRY-0001
 [16] STEP 5/5: verify_completion
-[17]   WHY: I am verifying that the extracted amount and due_date for Company Z’s latest invoice have been correctly entered into the internal system.
+[17]   WHY: I am verifying completion to confirm that the extracted amount and due_date from Company Z’s latest invoice have been correctly entered into the internal system.
 [18]   [OK] Verified ENTRY-0001 — status=verified
 
 ======================================================================
