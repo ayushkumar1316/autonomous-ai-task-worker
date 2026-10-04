@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Acme Corp — Invoice Portal</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f6f7f9; color: #1a1d21; }
+  h1 { font-size: 1.4rem; }
+  .search { margin: 1rem 0; }
+  input, button { padding: .55rem .8rem; font-size: .95rem; border: 1px solid #c6ccd4; border-radius: 6px; }
+  button { background: #1f6feb; color: #fff; border: none; cursor: pointer; }
+  table { border-collapse: collapse; margin-top: 1.25rem; background: #fff; }
+  th, td { padding: .6rem .9rem; border: 1px solid #d8dde3; text-align: left; }
+  th { background: #eef1f5; }
+  .amount { font-variant-numeric: tabular-nums; }
+  #status { margin-top: 1rem; padding: .75rem 1rem; border-radius: 6px; background: #e6f4ea; display: none; }
+</style>
+</head>
+<body>
+  <h1>Acme Corp — Invoice Portal</h1>
+  <div class="search">
+    <input id="q" type="text" placeholder="Search by company e.g. Company X" aria-label="Search company">
+    <button id="searchBtn" type="button">Search</button>
+  </div>
+  <table id="invoiceTable">
+    <thead><tr><th>Invoice ID</th><th>Company</th><th>Vendor</th><th>Amount</th><th>Due Date</th><th>Date</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="status"></div>
+
+  <script>
+    const INVOICES = [
+      { id: "INV-2024-001", company: "Company X", amount: 15000.0,  due_date: "2024-12-15", date: "2024-11-01", vendor: "Tech Solutions Ltd" },
+      { id: "INV-2024-002", company: "Company X", amount: 25000.0,  due_date: "2024-12-20", date: "2024-11-15", vendor: "Global Services Inc" },
+      { id: "INV-2024-003", company: "Company X", amount: 8500.0,   due_date: "2024-12-10", date: "2024-11-20", vendor: "Digital Innovations" },
+      { id: "INV-2024-004", company: "Company X", amount: 45000.0,  due_date: "2024-12-25", date: "2024-11-25", vendor: "Enterprise Corp" },
+      { id: "INV-Y-001",    company: "Company Y", amount: 12000.0,  due_date: "2024-12-18", date: "2024-11-10", vendor: "Alpha Corp" },
+      { id: "INV-Z-001",    company: "Company Z", amount: 50000.0,  due_date: "2024-12-30", date: "2024-11-28", vendor: "Omega Industries" }
+    ];
+
+    function render(list) {
+      const tbody = document.getElementById("rows");
+      tbody.innerHTML = "";
+      list.forEach(inv => {
+        const tr = document.createElement("tr");
+        tr.dataset.id = inv.id;
+        tr.innerHTML = `<td class="inv-id">${inv.id}</td><td class="company">${inv.company}</td>
+          <td class="vendor">${inv.vendor}</td>
+          <td class="amount">${inv.amount.toFixed(2)}</td>
+          <td class="due">${inv.due_date}</td><td class="date">${inv.date}</td>`;
+        tbody.appendChild(tr);
+      });
+      const status = document.getElementById("status");
+      status.style.display = list.length ? "block" : "none";
+      status.textContent = list.length
+        ? `${list.length} invoice(s) found. Latest: ${list.reduce((a, b) => a.date > b.date ? a : b).id}`
+        : "No invoices match that company.";
+    }
+
+    function doSearch() {
+      const q = document.getElementById("q").value.trim().toLowerCase();
+      const list = q ? INVOICES.filter(i => i.company.toLowerCase().includes(q)) : INVOICES.slice();
+      render(list.sort((a, b) => a.date.localeCompare(b.date)));
+    }
+
+    document.getElementById("searchBtn").addEventListener("click", doSearch);
+    document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+    render(INVOICES.slice().sort((a, b) => a.date.localeCompare(b.date)));
+  </script>
+</body>
+</html>

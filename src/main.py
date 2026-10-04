@@ -12,12 +12,24 @@ import argparse
 import json
 import os
 import sys
+import time
+from datetime import datetime
 
 # Add parent dir to path so we can import from src/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.agent_core import AgentCore
 from src.executor import ActionExecutor, ActionResult
+try:
+    from src.scheduler import TaskScheduler, ScheduleRule
+    SCHEDULER_AVAILABLE = True
+except Exception:
+    SCHEDULER_AVAILABLE = False
+try:
+    from src.browser_tools import PortalServer, PlaywrightBrowser
+    BROWSER_AVAILABLE = True
+except Exception:
+    BROWSER_AVAILABLE = False
 from src.env_loader import load_env
 
 DEFAULT_GOAL = "Find the latest invoice from Company X, extract the amount and due date, enter it into our internal system, and tell me once it is done."
@@ -25,7 +37,22 @@ DEFAULT_GOAL = "Find the latest invoice from Company X, extract the amount and d
 
 def run_task(goal, provider="groq", api_key="", model="", use_llm=True):
     """Run the full agent loop for a goal."""
-    executor = ActionExecutor()
+    # --- optional real browser: serves portal/invoices.html over HTTP ---
+    portal_server = None
+    browser = None
+    if BROWSER_AVAILABLE:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        portal_server = PortalServer(os.path.join(root, "portal"))
+        portal_url = portal_server.start()
+        print(f"[portal] Invoice portal served at {portal_url}")
+        try:
+            browser = PlaywrightBrowser(portal_url)
+            print("[browser] Playwright Chromium ready — real DOM reads enabled")
+        except Exception as e:
+            print(f"[browser] Playwright unavailable ({e}) — falling back to simulator")
+            browser = None
+    executor = ActionExecutor(browser=browser)
+
     agent = AgentCore(provider=provider, api_key=api_key, model=model) if use_llm else None
 
     log = []
@@ -126,6 +153,12 @@ def main():
     parser.add_argument("--model", default="", help="LLM model (optional)")
     parser.add_argument("--no-llm", action="store_true", help="Run without LLM (deterministic fallback)")
     parser.add_argument("--goal", default=DEFAULT_GOAL, help="Task goal to execute")
+    # Scheduler
+    parser.add_argument("--schedule", action="store_true", help="Enable scheduler mode")
+    parser.add_argument("--schedule-name", default="scheduled_task", help="Task name for scheduler")
+    parser.add_argument("--schedule-freq", choices=["once", "daily", "hourly", "interval"], default="once")
+    parser.add_argument("--schedule-interval", type=int, default=0, help="Interval in seconds for --schedule-freq interval")
+    parser.add_argument("--schedule-max", type=int, default=1, help="Max number of runs")
     args = parser.parse_args()
 
     # Load .env file if present (does not override existing env vars)
@@ -156,6 +189,33 @@ def main():
     print(f"\nProvider: {args.provider} | Model: {args.model or 'default'} | LLM: {'ON' if not args.no_llm else 'OFF'}")
     print(f"\nUser goal: {args.goal}\n")
 
+    # Scheduler mode
+    if args.schedule:
+        if not SCHEDULER_AVAILABLE:
+            print("ERROR: Scheduler not available (import failed)")
+            sys.exit(1)
+        print(f"[scheduler] Scheduler enabled: freq={args.schedule_freq}, interval={args.schedule_interval}s, max={args.schedule_max}")
+        scheduler = TaskScheduler(
+            lambda g: run_task(g, provider=args.provider, api_key=api_key, model=args.model, use_llm=not args.no_llm)
+        )
+        rule = ScheduleRule(frequency=args.schedule_freq, interval_seconds=args.schedule_interval, start_date=datetime.now())
+        task = scheduler.add_task(args.schedule_name, args.goal, rule)
+        task.run_count = 0
+        result = scheduler._execute_task(task)
+        # For recurring, keep running
+        if args.schedule_freq != "once" and args.schedule_max > 1:
+            for _ in range(args.schedule_max - 1):
+                if args.schedule_interval:
+                    print(f"[scheduler] Waiting {args.schedule_interval}s...")
+                    time.sleep(args.schedule_interval)
+                result = scheduler._execute_task(task)
+        print("=" * 70)
+        print(f" RESULT  status={result['result']['status']}")
+        print("=" * 70)
+        print(json.dumps(result, indent=2))
+        return
+
+    # Single task
     result = run_task(args.goal, provider=args.provider, api_key=api_key, model=args.model, use_llm=not args.no_llm)
 
     print("\n" + "=" * 70)
@@ -164,7 +224,6 @@ def main():
     print(json.dumps(result.get("result") or {"message": result["message"]}, indent=2))
 
     return result
-
 
 
 if __name__ == "__main__":

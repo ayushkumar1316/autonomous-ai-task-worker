@@ -1,8 +1,19 @@
-# Core prototype runs on Python 3.10+ standard library only — no packages required.
+# CentrAlign AI — Autonomous AI Task Worker
+# Runtime: Python 3.10+
 
-# Optional extras for extending the prototype into a production system (see README "Next Steps"):
-# playwright>=1.40      # real browser automation (replaces BrowserSimulator)
-# fastapi>=0.110        # HTTP API interface for the agent
+# Required for real browser automation (Module 2)
+# After installing, also run: python -m playwright install chromium
+# On minimal Linux servers you may need system libs (libXdamage, libgbm, libnss3...)
+# --with-deps handles this automatically when sudo is available.
+playwright>=1.40
+
+# Optional LLM provider extras — the agent calls Groq/OpenRouter directly over
+# urllib (standard library), so NO SDK is required. Set GROQ_API_KEY or
+# OPENROUTER_API_KEY in .env (see .env.example).
+
+# Optional, for future HTTP API exposure of the agent:
+# fastapi>=0.110
 # uvicorn>=0.27
-# (no LLM SDK needed — the agent calls Groq/OpenRouter directly over urllib, standard library only)
 
+# NOTE: without playwright installed, the agent falls back to the built-in
+# BrowserSimulator, so the core loop still runs on the standard library alone.

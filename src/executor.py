@@ -68,10 +68,16 @@ class BrowserSimulator:
 
 
 class ActionExecutor:
-    """Executes actions using available tools (simulated for now)."""
-    def __init__(self):
+    """Executes actions using available tools.
+
+    Pass a real PlaywrightBrowser to run against the live portal, or omit it
+    to use the deterministic BrowserSimulator (no browser, no deps).
+    """
+
+    def __init__(self, browser=None):
         self.portal = SimulatedInvoicePortal()
-        self.browser = BrowserSimulator()
+        self.browser = browser if browser is not None else BrowserSimulator()
+        self.mode = type(self.browser).__name__
 
     def execute_action(self, action: str, ctx: Dict) -> ActionResult:
         if action == "navigate_to_invoice_portal":
@@ -82,6 +88,16 @@ class ActionExecutor:
         if action == "search_latest_invoice":
             company = ctx.get("company", "Company X")
             r = self.browser.search(f"{company} latest invoice")
+            if r.data and isinstance(r.data.get("results"), list) and r.data["results"]:
+                rows = r.data["results"]
+                latest = max(rows, key=lambda x: x.get("date") or "")
+                ctx["found_invoice"] = {
+                    "id": latest.get("id"), "company": latest.get("company"),
+                    "vendor": latest.get("vendor"), "amount": float(latest.get("amount") or 0),
+                    "due_date": latest.get("due_date"), "date": latest.get("date"),
+                }
+                return ActionResult(True, f"Browser found {latest.get('id')} amount=${latest.get('amount')} vendor={latest.get('vendor')}",
+                                   {"invoice": ctx["found_invoice"], "source": "browser"})
             inv = self.portal.find_latest_invoice(company)
             if not inv:
                 return ActionResult(False, f"No invoices for {company}", confidence=0.25)
